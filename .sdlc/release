@@ -43,7 +43,7 @@ BASE=$(git merge-base @ "$upstream")
 tag_prefix=''
 release_suffix=''
 group_id='com.github.enr'
-artifact_id='resources'
+artifact_id='messages'
 snapshot_commit_prefix=''
 # snapshot_commit_prefix='[skip ci]'
 
