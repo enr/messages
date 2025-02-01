@@ -40,9 +40,12 @@ BASE=$(git merge-base @ "$upstream")
   exit 1
 }
 
+tag_prefix=''
 release_suffix=''
-versioned_group_id='[REPLACEME]'
-snapshot_commit_prefix='[skip ci]'
+group_id='com.github.enr'
+artifact_id='resources'
+snapshot_commit_prefix=''
+# snapshot_commit_prefix='[skip ci]'
 
 [[ -n "$1" ]] || {
   echo 'Missing release version: aborting release'
@@ -60,7 +63,7 @@ echo "Release version ${release_version}"
 snapshot_version="${2}-SNAPSHOT"
 echo "Snapshot version ${snapshot_version}"
 
-tag_name="v${release_version}"
+tag_name="${tag_prefix}${release_version}"
 tag_exists=$(git tag -l "${tag_name}")
 [[ -n "$tag_exists" ]] && {
   echo "Tag ${tag_name} exists: aborting release"
@@ -75,32 +78,13 @@ git_dirty=$(git status --porcelain)
   exit 1
 }
 
-maven_config="${prj_home}/.mvn/maven.config"
-
-function cleanup() {
-    echo "Cleanup..."
-    [[ -r "${maven_config}" ]] && rm -r "$maven_config"
-}
-trap cleanup EXIT
-trap cleanup SIGINT
-
-[[ -r "${maven_config}" ]] && {
-  rm "${maven_config}"
-}
-
-[[ -e "$mvn_settings_path" ]] && {
-  echo "
--s
-${prj_home}/.mvn/settings.xml
-" > "${maven_config}"
-}
-
-
-mvn org.codehaus.mojo:versions-maven-plugin:set -DgroupId=${versioned_group_id} '-DartifactId=*' "-DnewVersion=${release_version}"
+mvn org.codehaus.mojo:versions-maven-plugin:set-property -Dproperty=revision "-DnewVersion=${release_version}"
+mvn org.codehaus.mojo:versions-maven-plugin:set "-DgroupId=${group_id}" "-DartifactId=${artifact_id}" "-DnewVersion=${release_version}"
 mvn org.codehaus.mojo:versions-maven-plugin:commit
 git commit -a -m "release ${release_version}"
 git tag "${tag_name}"
-mvn org.codehaus.mojo:versions-maven-plugin:set -DgroupId=${versioned_group_id} '-DartifactId=*' "-DnewVersion=${snapshot_version}"
+mvn org.codehaus.mojo:versions-maven-plugin:set-property -Dproperty=revision "-DnewVersion=${snapshot_version}"
+mvn org.codehaus.mojo:versions-maven-plugin:set "-DgroupId=${group_id}" "-DartifactId=${artifact_id}" "-DnewVersion=${snapshot_version}"
 mvn org.codehaus.mojo:versions-maven-plugin:commit
 git commit -a -m "${snapshot_commit_prefix} back to snapshot"
 git push
