@@ -1,9 +1,11 @@
 package com.github.enr.messages;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Locale;
+import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
@@ -41,6 +43,17 @@ class ResourceBundleMessageSourceTest {
   }
 
   @Test
+  public void testGetAllMessages() {
+    ResourceBundleMessageSource source = new ResourceBundleMessageSource(RESOURCE_BUNDLE_NAME,
+        MissingKeyStrategy.defaultStrategy(), ErrorHandler.defaultHandler());
+
+    Context context = new Context(Locale.ENGLISH);
+    Map<String, String> result = source.getAllMessagesKeyAndValue(context);
+    assertThat(result).as("get all messages result").hasSize(2).containsEntry("welcome.message", "Welcome {0}!")
+        .containsEntry("test.foo", "bar");
+  }
+
+  @Test
   public void testNullKey() {
     ResourceBundleMessageSource source = new ResourceBundleMessageSource(RESOURCE_BUNDLE_NAME,
         MissingKeyStrategy.defaultStrategy(), ErrorHandler.defaultHandler());
@@ -56,9 +69,11 @@ class ResourceBundleMessageSourceTest {
   @CsvSource(value = {"welcome.message,John,Welcome John!", "non.existent.key,,{non.existent.key}"})
   public void testParameterizedMessages(String key, String argument, String expected) {
     // ResourceBundle mockBundle = Mockito.mock(ResourceBundle.class);
-    // Mockito.when(mockBundle.getString("welcome.message")).thenReturn("Welcome, {0}!");
+    // Mockito.when(mockBundle.getString("welcome.message")).thenReturn("Welcome,
+    // {0}!");
     // Mockito.when(mockBundle.getString("non.existent.key"))
-    // .thenThrow(new MissingResourceException("Key not found", "messages", "non.existent.key"));
+    // .thenThrow(new MissingResourceException("Key not found", "messages",
+    // "non.existent.key"));
 
     ResourceBundleMessageSource source = new ResourceBundleMessageSource(RESOURCE_BUNDLE_NAME,
         MissingKeyStrategy.defaultStrategy(), ErrorHandler.defaultHandler());

@@ -27,7 +27,7 @@ Add the dependency
 <dependency>
   <groupId>com.github.enr</groupId>
   <artifactId>messages</artifactId>
-  <version>0.0.0</version>
+  <version>0.2.0</version>
 </dependency>
 ```
 

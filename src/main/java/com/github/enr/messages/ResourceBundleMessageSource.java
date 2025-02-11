@@ -1,6 +1,10 @@
 package com.github.enr.messages;
 
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
@@ -45,4 +49,28 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
     }
     return null;
   }
+
+  /**
+   * Retrieves all keys and values from the resource bundle for a given locale.
+   *
+   * @param context The context containing the locale.
+   * @return A map with all keys and their corresponding message values.
+   */
+  @Override
+  public Map<String, String> getAllMessagesKeyAndValue(Context context) {
+    try {
+      ResourceBundle bundle = ResourceBundle.getBundle(resource, context.getLocale());
+      Map<String, String> messages = new HashMap<>();
+
+      Enumeration<String> keys = bundle.getKeys();
+      while (keys.hasMoreElements()) {
+        String key = keys.nextElement();
+        messages.put(key, bundle.getString(key));
+      }
+      return messages;
+    } catch (MissingResourceException e) {
+      return Collections.emptyMap(); // Return an empty map if the resource is not found
+    }
+  }
+
 }
