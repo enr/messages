@@ -41,10 +41,9 @@ Usage:
 
 ```java
 // create the source
-ResourceBundleMessageSource source = new ResourceBundleMessageSource(
-  RESOURCE_BUNDLE_NAME,
-  MissingKeyStrategy.defaultStrategy(),
-  ErrorHandler.defaultHandler());
+ResourceBundleMessageSource source = ResourceBundleMessageSource
+    .forResource(RESOURCE_BUNDLE_NAME)
+    .withFallbackResource(FALLBACK_BUNDLE_NAME).build();
 // create a context
 Context context = new Context(Locale.ENGLISH);
 // get message
