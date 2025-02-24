@@ -18,10 +18,13 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
 
   private String fallbackResource;
 
+  private ClassLoader classLoader;
+
   private ResourceBundleMessageSource(Builder builder) {
     super(builder.missingKeyStrategy, builder.errorHandler, builder.defaultLocale);
     this.resource = builder.resource;
     this.fallbackResource = builder.fallbackResource;
+    this.classLoader = builder.classLoader;
   }
 
   public static class Builder {
@@ -30,6 +33,7 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
     private ErrorHandler errorHandler = ErrorHandler.defaultHandler();
     private Locale defaultLocale = Locale.getDefault();
     private String fallbackResource;
+    private ClassLoader classLoader;
 
     public Builder(String resource) {
       this.resource = resource;
@@ -58,6 +62,11 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
     public ResourceBundleMessageSource build() {
       return new ResourceBundleMessageSource(this);
     }
+
+    public Builder withClassLoader(ClassLoader classLoader) {
+      this.classLoader = classLoader;
+      return this;
+    }
   }
 
   public static Builder forResource(String resource) {
@@ -68,8 +77,8 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
   protected String getMessageTemplate(String key, Context context) throws Exception {
     String template = null;
     try {
-      ResourceBundle mainLabels = ResourceBundle.getBundle(resource, context.getLocale());
-      template = mainLabels.getString(key);
+      ResourceBundle mainBundle = loadBundle(resource, context);
+      template = mainBundle.getString(key);
       if (template != null) {
         return template;
       }
@@ -77,7 +86,7 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
     }
     try {
       if (fallbackResource != null) {
-        ResourceBundle fallbackLabels = ResourceBundle.getBundle(fallbackResource, context.getLocale());
+        ResourceBundle fallbackLabels = loadBundle(fallbackResource, context);
         template = fallbackLabels.getString(key);
       }
       return template;
@@ -95,7 +104,7 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
   @Override
   public Map<String, String> getAllMessagesKeyAndValue(Context context) {
     try {
-      ResourceBundle bundle = ResourceBundle.getBundle(resource, context.getLocale());
+      ResourceBundle bundle = loadBundle(resource, context);
       Map<String, String> messages = new HashMap<>();
 
       Enumeration<String> keys = bundle.getKeys();
@@ -104,7 +113,7 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
         messages.put(key, bundle.getString(key));
       }
       if (fallbackResource != null) {
-        ResourceBundle fallbackBundle = ResourceBundle.getBundle(fallbackResource, context.getLocale());
+        ResourceBundle fallbackBundle = loadBundle(fallbackResource, context);
         Enumeration<String> fallbackKeys = fallbackBundle.getKeys();
         while (fallbackKeys.hasMoreElements()) {
           String key = fallbackKeys.nextElement();
@@ -116,6 +125,13 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
       LOG.log(Logger.Level.ERROR, "Error loading resource {0}: {1}", resource, e);
       return Collections.emptyMap(); // Return an empty map if the resource is not found
     }
+  }
+
+  private ResourceBundle loadBundle(String res, Context context) {
+    if (classLoader != null) {
+      return ResourceBundle.getBundle(res, context.getLocale(), classLoader);
+    }
+    return ResourceBundle.getBundle(res, context.getLocale());
   }
 
 }
