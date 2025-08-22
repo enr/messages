@@ -9,17 +9,17 @@ prj_home="$( cd -P "$( dirname "$sdlc_dir" )" && pwd )"
 
 cd "${prj_home}"
 
-hash mvn 2>/dev/null || {
-  echo 'No Maven executable: aborting'
+[[ -x ./mvnw ]] || {
+  echo 'No Maven wrapper executable: aborting'
   exit 1
 }
 
 # Update dependencies
-mvn -U org.openrewrite.maven:rewrite-maven-plugin:6.16.1:run \
+./mvnw -U org.openrewrite.maven:rewrite-maven-plugin:6.16.1:run \
     -Drewrite.activeRecipes=org.openrewrite.maven.UpgradeDependencyVersion \
     -Drewrite.options='newVersion=latest.release,groupId=*,artifactId=*'
 
 # Update plugins
-mvn -U org.openrewrite.maven:rewrite-maven-plugin:6.16.1:run \
+./mvnw -U org.openrewrite.maven:rewrite-maven-plugin:6.16.1:run \
     -Drewrite.activeRecipes=org.openrewrite.maven.UpgradePluginVersion \
     -Drewrite.options='newVersion=latest.release,groupId=*,artifactId=*,addVersionIfMissing=false'

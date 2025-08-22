@@ -9,9 +9,9 @@ prj_home="$( cd -P "$( dirname "$sdlc_dir" )" && pwd )"
 
 cd "${prj_home}"
 
-hash mvn 2>/dev/null || {
-  echo 'No Maven executable: aborting'
+[[ -x ./mvnw ]] || {
+  echo 'No Maven wrapper executable: aborting'
   exit 1
 }
 
-mvn -Pfmt
+./mvnw -Pfmt

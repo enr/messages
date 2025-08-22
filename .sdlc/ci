@@ -9,8 +9,8 @@ prj_home="$( cd -P "$( dirname "$sdlc_dir" )" && pwd )"
 
 cd "${prj_home}"
 
-hash mvn 2>/dev/null || {
-  echo 'No Maven executable: aborting'
+[[ -x ./mvnw ]] || {
+  echo 'No Maven wrapper executable: aborting'
   exit 1
 }
 
@@ -20,9 +20,9 @@ mvn_profiles='ci'
 mvn_settings_path="${prj_home}/.mvn/settings.xml"
 [[ -e "$mvn_settings_path" ]] || {
   echo "Maven settings file '${mvn_settings_path}' not found: local install"
-  mvn --no-transfer-progress --batch-mode --activate-profiles "$mvn_profiles" install
+  ./mvnw --no-transfer-progress --batch-mode --activate-profiles "$mvn_profiles" install
   exit $?
 }
 
 echo "Deploy using Maven settings '${mvn_settings_path}'"
-mvn --no-transfer-progress --batch-mode --activate-profiles "$mvn_profiles" -s "$mvn_settings_path" install deploy
+./mvnw --no-transfer-progress --batch-mode --activate-profiles "$mvn_profiles" -s "$mvn_settings_path" install deploy
