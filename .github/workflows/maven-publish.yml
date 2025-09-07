@@ -1,0 +1,24 @@
+name: Publish Package
+on:
+  push:
+    tags:
+      - '*'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'zulu'
+    - name: Publish package
+      run: |
+        chmod +x ./.sdlc/deploy-release
+        ./.sdlc/deploy-release
+      env:
+        GITHUB_TOKEN: ${{ github.token }}

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -e
+
+tool_source="${BASH_SOURCE[0]}"
+while [ -h "$tool_source" ] ; do tool_source="$(readlink "$tool_source")"; done
+sdlc_dir="$( cd -P "$( dirname "$tool_source" )" && pwd )"
+prj_home="$( cd -P "$( dirname "$sdlc_dir" )" && pwd )"
+
+cd "${prj_home}"
+
+hash mvn 2>/dev/null || {
+  echo 'No Maven executable: aborting'
+  exit 1
+}
+
+# Comma-delimited list of profiles to activate
+mvn_profiles='release'
+
+mvn_settings_path="${prj_home}/.mvn/settings-github.xml"
+[[ -e "$mvn_settings_path" ]] || {
+  echo "Maven settings file '${mvn_settings_path}' not found: local install"
+  mvn --no-transfer-progress --batch-mode --activate-profiles "$mvn_profiles" install
+  exit 1
+}
+
+echo "Deploy using Maven settings '${mvn_settings_path}'"
+
+mvn --no-transfer-progress --batch-mode --activate-profiles "$mvn_profiles" \
+    -s "$mvn_settings_path" deploy \
+    "-DaltDeploymentRepository=github::https://maven.pkg.github.com/enr/messages" \
+    "-DaltReleaseDeploymentRepository=github::https://maven.pkg.github.com/enr/messages"

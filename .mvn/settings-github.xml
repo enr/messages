@@ -1,0 +1,44 @@
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                      http://maven.apache.org/xsd/settings-1.0.0.xsd">
+
+  <activeProfiles>
+    <activeProfile>github</activeProfile>
+  </activeProfiles>
+
+  <profiles>
+    <profile>
+      <id>github</id>
+      <repositories>
+        <repository>
+          <id>central</id>
+          <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+        <repository>
+          <id>github</id>
+          <!--
+          Ensure that the repository URL adheres to the format: 
+          https://maven.pkg.github.com/OWNER/REPO. 
+          You have the flexibility to use a wildcard (*) in place 
+          of the OWNER, allowing Maven to install dependencies from 
+          the repository's owner dynamically.
+          -->
+          <url>https://maven.pkg.github.com/enr/*</url>
+          <snapshots>
+            <enabled>true</enabled>
+          </snapshots>
+        </repository>
+      </repositories>
+    </profile>
+  </profiles>
+
+  <servers>
+    <server>
+      <id>github</id>
+      <!-- <username>${env.MAVEN_REPO_USER}</username> -->
+      <username>enr</username>
+      <password>${env.GITHUB_TOKEN}</password>
+    </server>
+  </servers>
+</settings>
