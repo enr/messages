@@ -83,10 +83,8 @@ class ResourceBundleMessageSourceTest {
 
     Context context = new Context(Locale.ENGLISH);
     Map<String, String> result = source.getAllMessagesKeyAndValue(context);
-    assertThat(result).as("get all messages result when main bundle not found")
-        .hasSize(2)
-        .containsEntry("test.message.both", "fallback")
-        .containsEntry("test.message.only-fallback", "fallback");
+    assertThat(result).as("get all messages result when main bundle not found").hasSize(2)
+        .containsEntry("test.message.both", "fallback").containsEntry("test.message.only-fallback", "fallback");
   }
 
   @Test
@@ -96,10 +94,8 @@ class ResourceBundleMessageSourceTest {
 
     Context context = new Context(Locale.ENGLISH);
     Map<String, String> result = source.getAllMessagesKeyAndValue(context);
-    assertThat(result).as("get all messages result when fallback bundle not found")
-        .hasSize(3)
-        .containsEntry("welcome.message", "Welcome {0}!")
-        .containsEntry("test.foo", "bar")
+    assertThat(result).as("get all messages result when fallback bundle not found").hasSize(3)
+        .containsEntry("welcome.message", "Welcome {0}!").containsEntry("test.foo", "bar")
         .containsEntry("test.message.both", "messages");
   }
 

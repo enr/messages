@@ -2,7 +2,6 @@ package com.github.enr.messages;
 
 import java.lang.System.Logger;
 import java.lang.invoke.MethodHandles;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Locale;
