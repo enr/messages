@@ -77,6 +77,33 @@ class ResourceBundleMessageSourceTest {
   }
 
   @Test
+  public void testGetAllMessagesWithMainBundleNotFound() {
+    ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource("messages.nonexistent")
+        .withFallbackResource(FALLBACK_BUNDLE_NAME).build();
+
+    Context context = new Context(Locale.ENGLISH);
+    Map<String, String> result = source.getAllMessagesKeyAndValue(context);
+    assertThat(result).as("get all messages result when main bundle not found")
+        .hasSize(2)
+        .containsEntry("test.message.both", "fallback")
+        .containsEntry("test.message.only-fallback", "fallback");
+  }
+
+  @Test
+  public void testGetAllMessagesWithFallbackNotFound() {
+    ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME)
+        .withFallbackResource("messages.nonexistent").build();
+
+    Context context = new Context(Locale.ENGLISH);
+    Map<String, String> result = source.getAllMessagesKeyAndValue(context);
+    assertThat(result).as("get all messages result when fallback bundle not found")
+        .hasSize(3)
+        .containsEntry("welcome.message", "Welcome {0}!")
+        .containsEntry("test.foo", "bar")
+        .containsEntry("test.message.both", "messages");
+  }
+
+  @Test
   public void testNullKey() {
     ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME).build();
 

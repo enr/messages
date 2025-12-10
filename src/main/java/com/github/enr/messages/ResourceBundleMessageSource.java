@@ -103,28 +103,31 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
    */
   @Override
   public Map<String, String> getAllMessagesKeyAndValue(Context context) {
+    Map<String, String> messages = new HashMap<>();
     try {
       ResourceBundle bundle = loadBundle(resource, context);
-      Map<String, String> messages = new HashMap<>();
 
       Enumeration<String> keys = bundle.getKeys();
       while (keys.hasMoreElements()) {
         String key = keys.nextElement();
         messages.put(key, bundle.getString(key));
       }
-      if (fallbackResource != null) {
-        ResourceBundle fallbackBundle = loadBundle(fallbackResource, context);
-        Enumeration<String> fallbackKeys = fallbackBundle.getKeys();
-        while (fallbackKeys.hasMoreElements()) {
-          String key = fallbackKeys.nextElement();
-          messages.putIfAbsent(key, fallbackBundle.getString(key));
-        }
-      }
-      return messages;
-    } catch (MissingResourceException e) {
-      LOG.log(Logger.Level.ERROR, "Error loading resource {0}: {1}", resource, e);
-      return Collections.emptyMap(); // Return an empty map if the resource is not found
+    } catch (MissingResourceException ignored) {
     }
+
+    if (fallbackResource == null) {
+      return messages;
+    }
+    try {
+      ResourceBundle fallbackBundle = loadBundle(fallbackResource, context);
+      Enumeration<String> fallbackKeys = fallbackBundle.getKeys();
+      while (fallbackKeys.hasMoreElements()) {
+        String key = fallbackKeys.nextElement();
+        messages.putIfAbsent(key, fallbackBundle.getString(key));
+      }
+    } catch (MissingResourceException ignored) {
+    }
+    return messages;
   }
 
   private ResourceBundle loadBundle(String res, Context context) {
