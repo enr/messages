@@ -38,7 +38,25 @@ class ResourceBundleMessageSourceTest {
     assertEquals("messages", result, "Message should be taken from the main resource bundle.");
     result = source.msg("test.message.only-fallback", context);
     assertEquals("fallback", result, "Message should be taken from the fallback resource bundle.");
+  }
 
+  @Test
+  public void testValidMessageWithFallbackAndCustomLocale() {
+    Locale customLocale = Locale.forLanguageTag("it");
+
+    ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME)
+        .withDefaultLocale(customLocale).withFallbackResource(FALLBACK_BUNDLE_NAME).build();
+
+    String result = source.msg("test.message.both");
+    assertEquals("messages italiano", result, "Message should be taken from the main resource bundle.");
+    result = source.msg("test.message.only-fallback");
+    assertEquals("fallback italiano", result, "Message should be taken from the fallback resource bundle.");
+
+    Context context = new Context(customLocale);
+    Map<String, String> allMessages = source.getAllMessagesKeyAndValue(context);
+    assertThat(allMessages).as("get all messages result").hasSize(4).containsEntry("welcome.message", "Benvenuto {0}!")
+        .containsEntry("test.foo", "bar").containsEntry("test.message.both", "messages italiano")
+        .containsEntry("test.message.only-fallback", "fallback italiano");
   }
 
   @Test
