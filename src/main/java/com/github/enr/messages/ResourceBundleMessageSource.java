@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ResourceBundleMessageSource extends MessageSourceBase {
 
@@ -19,11 +20,17 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
 
   private ClassLoader classLoader;
 
+  private final ConcurrentHashMap<Locale, ResourceBundle> mainBundleCache;
+  private final ConcurrentHashMap<Locale, ResourceBundle> fallbackBundleCache;
+
   private ResourceBundleMessageSource(Builder builder) {
     super(builder.missingKeyStrategy, builder.errorHandler, builder.defaultLocale);
     this.resource = builder.resource;
     this.fallbackResource = builder.fallbackResource;
     this.classLoader = builder.classLoader;
+    this.mainBundleCache = new ConcurrentHashMap<>();
+    this.fallbackBundleCache = new ConcurrentHashMap<>();
+    loadBundlesForLocale(builder.defaultLocale);
   }
 
   public static class Builder {
@@ -76,8 +83,10 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
   protected String getMessageTemplate(String key, Context context) throws Exception {
     String template = null;
     try {
-      ResourceBundle mainBundle = loadBundle(resource, context);
-      template = mainBundle.getString(key);
+      ResourceBundle mainBundle = getMainBundle(context);
+      if (mainBundle != null) {
+        template = mainBundle.getString(key);
+      }
       if (template != null) {
         return template;
       }
@@ -85,8 +94,10 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
     }
     try {
       if (fallbackResource != null) {
-        ResourceBundle fallbackLabels = loadBundle(fallbackResource, context);
-        template = fallbackLabels.getString(key);
+        ResourceBundle fallbackLabels = getFallbackBundle(context);
+        if (fallbackLabels != null) {
+          template = fallbackLabels.getString(key);
+        }
       }
       return template;
     } catch (MissingResourceException ignored) {
@@ -104,12 +115,13 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
   public Map<String, String> getAllMessagesKeyAndValue(Context context) {
     Map<String, String> messages = new HashMap<>();
     try {
-      ResourceBundle bundle = loadBundle(resource, context);
-
-      Enumeration<String> keys = bundle.getKeys();
-      while (keys.hasMoreElements()) {
-        String key = keys.nextElement();
-        messages.put(key, bundle.getString(key));
+      ResourceBundle bundle = getMainBundle(context);
+      if (bundle != null) {
+        Enumeration<String> keys = bundle.getKeys();
+        while (keys.hasMoreElements()) {
+          String key = keys.nextElement();
+          messages.put(key, bundle.getString(key));
+        }
       }
     } catch (MissingResourceException ignored) {
     }
@@ -118,22 +130,71 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
       return messages;
     }
     try {
-      ResourceBundle fallbackBundle = loadBundle(fallbackResource, context);
-      Enumeration<String> fallbackKeys = fallbackBundle.getKeys();
-      while (fallbackKeys.hasMoreElements()) {
-        String key = fallbackKeys.nextElement();
-        messages.putIfAbsent(key, fallbackBundle.getString(key));
+      ResourceBundle fallbackBundle = getFallbackBundle(context);
+      if (fallbackBundle != null) {
+        Enumeration<String> fallbackKeys = fallbackBundle.getKeys();
+        while (fallbackKeys.hasMoreElements()) {
+          String key = fallbackKeys.nextElement();
+          messages.putIfAbsent(key, fallbackBundle.getString(key));
+        }
       }
     } catch (MissingResourceException ignored) {
     }
     return messages;
   }
 
-  private ResourceBundle loadBundle(String res, Context context) {
-    if (classLoader != null) {
-      return ResourceBundle.getBundle(res, context.getLocale(), classLoader);
+  private void loadBundlesForLocale(Locale locale) {
+    // Carica main bundle
+    try {
+      ResourceBundle mainBundle = loadBundle(resource, locale);
+      mainBundleCache.put(locale, mainBundle);
+    } catch (MissingResourceException e) {
+      LOG.log(Logger.Level.WARNING, "Main bundle not found for locale " + locale);
     }
-    return ResourceBundle.getBundle(res, context.getLocale());
+
+    // Carica fallback bundle
+    if (fallbackResource != null) {
+      try {
+        ResourceBundle fallbackBundle = loadBundle(fallbackResource, locale);
+        fallbackBundleCache.put(locale, fallbackBundle);
+      } catch (MissingResourceException e) {
+        LOG.log(Logger.Level.WARNING, "Fallback bundle not found for locale " + locale);
+      }
+    }
   }
 
+  protected ResourceBundle getMainBundle(Context context) {
+    return mainBundleCache.computeIfAbsent(context.getLocale(), loc -> {
+      try {
+        return loadBundle(resource, loc);
+      } catch (MissingResourceException e) {
+        return null;
+      }
+    });
+  }
+
+  protected ResourceBundle getFallbackBundle(Context context) {
+    if (fallbackResource == null) {
+      return null;
+    }
+    return fallbackBundleCache.computeIfAbsent(context.getLocale(), loc -> {
+      try {
+        return loadBundle(fallbackResource, loc);
+      } catch (MissingResourceException e) {
+        return null;
+      }
+    });
+  }
+
+  private ResourceBundle loadBundle(String res, Locale locale) {
+    if (classLoader != null) {
+      return ResourceBundle.getBundle(res, locale, classLoader);
+    }
+    return ResourceBundle.getBundle(res, locale);
+  }
+
+  protected void clearCache() {
+    mainBundleCache.clear();
+    fallbackBundleCache.clear();
+  }
 }
