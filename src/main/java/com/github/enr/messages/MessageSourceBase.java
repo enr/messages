@@ -12,11 +12,18 @@ public abstract class MessageSourceBase implements MessageSource {
   private final MissingKeyStrategy missingKeyStrategy;
   private final ErrorHandler errorHandler;
   private final Context defaultContext;
+  private final boolean useDefaultLocaleFallback;
 
-  protected MessageSourceBase(MissingKeyStrategy missingKeyStrategy, ErrorHandler errorHandler, Locale defaultLocale) {
+  protected MessageSourceBase(MissingKeyStrategy missingKeyStrategy, ErrorHandler errorHandler, Locale defaultLocale,
+      boolean useDefaultLocaleFallback) {
     this.missingKeyStrategy = missingKeyStrategy != null ? missingKeyStrategy : MissingKeyStrategy.defaultStrategy();
     this.errorHandler = errorHandler != null ? errorHandler : ErrorHandler.defaultHandler();
     this.defaultContext = new Context(defaultLocale);
+    this.useDefaultLocaleFallback = useDefaultLocaleFallback;
+  }
+
+  protected MessageSourceBase(MissingKeyStrategy missingKeyStrategy, ErrorHandler errorHandler, Locale defaultLocale) {
+    this(missingKeyStrategy, errorHandler, defaultLocale, false);
   }
 
   protected abstract String getMessageTemplate(String key, Context context) throws Exception;
@@ -30,6 +37,14 @@ public abstract class MessageSourceBase implements MessageSource {
     try {
       String template = getMessageTemplate(key, context);
       LOG.log(Logger.Level.DEBUG, "template = {0}", template);
+      if (template == null) {
+        // Fallback to default locale if flag is enabled
+        if (useDefaultLocaleFallback && !context.getLocale().equals(defaultContext.getLocale())) {
+          LOG.log(Logger.Level.DEBUG, "Message key ''{0}'' not found in locale ''{1}'', falling back to default locale ''{2}''", key,
+              context.getLocale(), defaultContext.getLocale());
+          template = getMessageTemplate(key, defaultContext);
+        }
+      }
       if (template == null) {
         return missingKeyStrategy.handleMissingKey(key);
       }
@@ -47,5 +62,9 @@ public abstract class MessageSourceBase implements MessageSource {
   @Override
   public String msg(String key, Object... args) {
     return msg(key, defaultContext, args);
+  }
+
+  public boolean isUseDefaultLocaleFallback() {
+    return useDefaultLocaleFallback;
   }
 }
