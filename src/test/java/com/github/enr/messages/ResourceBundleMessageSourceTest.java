@@ -12,6 +12,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 import java.lang.reflect.Field;
 import java.util.Locale;
 import java.util.Map;
@@ -22,6 +23,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -33,9 +35,7 @@ class ResourceBundleMessageSourceTest {
   private static final String RESOURCE_BUNDLE_NAME = "messages.test";
   private static final String FALLBACK_BUNDLE_NAME = "messages.fallback";
 
-
   private ResourceBundle mockMainBundle = Mockito.mock(ResourceBundle.class);
-
 
   private ResourceBundle mockFallbackBundle = Mockito.mock(ResourceBundle.class);
 
@@ -69,9 +69,8 @@ class ResourceBundleMessageSourceTest {
   void testValidMessageWithFallbackAndCustomLocale() {
     Locale customLocale = Locale.forLanguageTag("it");
 
-    ResourceBundleMessageSource source =
-        ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME).withDefaultLocale(customLocale)
-            .withFallbackResource(FALLBACK_BUNDLE_NAME).build();
+    ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME)
+        .withDefaultLocale(customLocale).withFallbackResource(FALLBACK_BUNDLE_NAME).build();
 
     String result = source.msg("test.message.both");
     assertEquals("messages italiano", result, "Message should be taken from the main resource bundle.");
@@ -80,9 +79,8 @@ class ResourceBundleMessageSourceTest {
 
     Context context = new Context(customLocale);
     Map<String, String> allMessages = source.getAllMessagesKeyAndValue(context);
-    assertThat(allMessages).as("get all messages result").hasSize(4)
-        .containsEntry("welcome.message", "Benvenuto {0}!").containsEntry("test.foo", "bar")
-        .containsEntry("test.message.both", "messages italiano")
+    assertThat(allMessages).as("get all messages result").hasSize(4).containsEntry("welcome.message", "Benvenuto {0}!")
+        .containsEntry("test.foo", "bar").containsEntry("test.message.both", "messages italiano")
         .containsEntry("test.message.only-fallback", "fallback italiano");
   }
 
@@ -99,8 +97,7 @@ class ResourceBundleMessageSourceTest {
     ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME).build();
     Context context = new Context(Locale.ENGLISH);
     Map<String, String> result = source.getAllMessagesKeyAndValue(context);
-    assertThat(result).as("get all messages result").hasSize(3)
-        .containsEntry("welcome.message", "Welcome {0}!")
+    assertThat(result).as("get all messages result").hasSize(3).containsEntry("welcome.message", "Welcome {0}!")
         .containsEntry("test.foo", "bar").containsEntry("test.message.both", "messages");
   }
 
@@ -108,8 +105,7 @@ class ResourceBundleMessageSourceTest {
   void testGetAllMessagesWithFallback() {
     Context context = new Context(Locale.ENGLISH);
     Map<String, String> result = messageSource.getAllMessagesKeyAndValue(context);
-    assertThat(result).as("get all messages result").hasSize(4)
-        .containsEntry("welcome.message", "Welcome {0}!")
+    assertThat(result).as("get all messages result").hasSize(4).containsEntry("welcome.message", "Welcome {0}!")
         .containsEntry("test.foo", "bar").containsEntry("test.message.both", "messages")
         .containsEntry("test.message.only-fallback", "fallback");
   }
@@ -121,28 +117,25 @@ class ResourceBundleMessageSourceTest {
     Context context = new Context(Locale.ENGLISH);
     Map<String, String> result = source.getAllMessagesKeyAndValue(context);
     assertThat(result).as("get all messages result when main bundle not found").hasSize(2)
-        .containsEntry("test.message.both", "fallback")
-        .containsEntry("test.message.only-fallback", "fallback");
+        .containsEntry("test.message.both", "fallback").containsEntry("test.message.only-fallback", "fallback");
   }
 
   @Test
   void testGetAllMessagesWithFallbackNotFound() {
-    ResourceBundleMessageSource source =
-        ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME).withFallbackResource("messages.nonexistent")
-            .build();
+    ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME)
+        .withFallbackResource("messages.nonexistent").build();
     Context context = new Context(Locale.ENGLISH);
     Map<String, String> result = source.getAllMessagesKeyAndValue(context);
     assertThat(result).as("get all messages result when fallback bundle not found").hasSize(3)
-        .containsEntry("welcome.message", "Welcome {0}!")
-        .containsEntry("test.foo", "bar").containsEntry("test.message.both", "messages");
+        .containsEntry("welcome.message", "Welcome {0}!").containsEntry("test.foo", "bar")
+        .containsEntry("test.message.both", "messages");
   }
 
   @Test
   void testNullKey() {
     Context context = new Context(Locale.ENGLISH);
-    IllegalArgumentException exception =
-        assertThrows(IllegalArgumentException.class, () -> messageSource.msg(null, context),
-            "Passing a null key should throw an exception.");
+    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        () -> messageSource.msg(null, context), "Passing a null key should throw an exception.");
     assertEquals("Key and Context must not be null.", exception.getMessage());
   }
 
@@ -160,8 +153,8 @@ class ResourceBundleMessageSourceTest {
   void testPreloadingDefaultLocaleInConstructor() {
     // Since the bundles are loaded from files, we can't easily mock ResourceBundle.getBundle
     // called inside the constructor. We'll verify by checking if the cache is populated.
-    ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME)
-        .withDefaultLocale(Locale.ENGLISH).build();
+    ResourceBundleMessageSource source =
+        ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME).withDefaultLocale(Locale.ENGLISH).build();
     // Access cache via reflection to verify pre-loading
     assertNotNull(getCache(source, "mainBundleCache").get(Locale.ENGLISH));
   }
@@ -179,7 +172,6 @@ class ResourceBundleMessageSourceTest {
     // So we check if the cache now contains the bundle.
     assertNotNull(getCache(spiedSource, "mainBundleCache").get(Locale.ITALIAN));
   }
-
 
   @Test
   void testPriorityMainOverFallback_KeyExistsInBoth() throws Exception {
@@ -210,8 +202,7 @@ class ResourceBundleMessageSourceTest {
     doReturn(mockMainBundle).when(spiedSource).getMainBundle(germanContext);
     doReturn(mockFallbackBundle).when(spiedSource).getFallbackBundle(germanContext);
 
-    when(mockMainBundle.getString("only.in.fallback"))
-        .thenThrow(new MissingResourceException("", "", ""));
+    when(mockMainBundle.getString("only.in.fallback")).thenThrow(new MissingResourceException("", "", ""));
     when(mockFallbackBundle.getString("only.in.fallback")).thenReturn("Fallback Value");
 
     String result = spiedSource.getMessageTemplate("only.in.fallback", germanContext);
@@ -231,11 +222,8 @@ class ResourceBundleMessageSourceTest {
     doReturn(mockMainBundle).when(spiedSource).getMainBundle(spanishContext);
     doReturn(mockFallbackBundle).when(spiedSource).getFallbackBundle(spanishContext);
 
-
-    when(mockMainBundle.getString("nonexistent.key"))
-        .thenThrow(new MissingResourceException("", "", ""));
-    when(mockFallbackBundle.getString("nonexistent.key"))
-        .thenThrow(new MissingResourceException("", "", ""));
+    when(mockMainBundle.getString("nonexistent.key")).thenThrow(new MissingResourceException("", "", ""));
+    when(mockFallbackBundle.getString("nonexistent.key")).thenThrow(new MissingResourceException("", "", ""));
 
     // The current design returns null from getMessageTemplate, and the MessageSourceBase handles it
     String result = spiedSource.msg("nonexistent.key", spanishContext);
@@ -268,8 +256,8 @@ class ResourceBundleMessageSourceTest {
 
   @Test
   void testThreadSafety_ConcurrentAccess() throws InterruptedException {
-    ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME)
-        .withDefaultLocale(Locale.ENGLISH).build();
+    ResourceBundleMessageSource source =
+        ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME).withDefaultLocale(Locale.ENGLISH).build();
     source.clearCache();
 
     int numberOfThreads = 20;
@@ -314,8 +302,7 @@ class ResourceBundleMessageSourceTest {
   }
 
   @SuppressWarnings("unchecked")
-  private ConcurrentHashMap<Locale, ResourceBundle> getCache(
-      ResourceBundleMessageSource source, String cacheName) {
+  private ConcurrentHashMap<Locale, ResourceBundle> getCache(ResourceBundleMessageSource source, String cacheName) {
     try {
       Field cacheField = ResourceBundleMessageSource.class.getDeclaredField(cacheName);
       cacheField.setAccessible(true);

@@ -40,7 +40,8 @@ public abstract class MessageSourceBase implements MessageSource {
       if (template == null) {
         // Fallback to default locale if flag is enabled
         if (useDefaultLocaleFallback && !context.getLocale().equals(defaultContext.getLocale())) {
-          LOG.log(Logger.Level.DEBUG, "Message key ''{0}'' not found in locale ''{1}'', falling back to default locale ''{2}''", key,
+          LOG.log(Logger.Level.DEBUG,
+              "Message key ''{0}'' not found in locale ''{1}'', falling back to default locale ''{2}''", key,
               context.getLocale(), defaultContext.getLocale());
           template = getMessageTemplate(key, defaultContext);
         }
