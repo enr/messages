@@ -125,8 +125,8 @@ class MessageSourceBaseTest {
   @Test
   @DisplayName("Custom Missing Key Strategy Returning Null Propagates Null")
   void customMissingKeyStrategyReturningNullPropagatesNull() {
-    messageSource = new MockMessageSource.Builder(messages).defaultLocale(ENGLISH)
-        .missingKeyStrategy(key -> null).build();
+    messageSource =
+        new MockMessageSource.Builder(messages).defaultLocale(ENGLISH).missingKeyStrategy(key -> null).build();
     assertNull(messageSource.msg("nonexistent.key", new Context(ENGLISH)));
   }
 
@@ -138,8 +138,10 @@ class MessageSourceBaseTest {
     messages.put(ENGLISH, en);
 
     AtomicReference<String> capturedKey = new AtomicReference<>();
-    messageSource = new MockMessageSource.Builder(messages).defaultLocale(ENGLISH)
-        .errorHandler((key, ex) -> { capturedKey.set(key); return "ERROR"; }).build();
+    messageSource = new MockMessageSource.Builder(messages).defaultLocale(ENGLISH).errorHandler((key, ex) -> {
+      capturedKey.set(key);
+      return "ERROR";
+    }).build();
 
     assertEquals("ERROR", messageSource.msg("bad.template", new Context(ENGLISH), "arg"));
     assertEquals("bad.template", capturedKey.get());
@@ -189,7 +191,7 @@ class MessageSourceBaseTest {
     messageSource = builder().useDefaultLocaleFallback(true).build();
 
     String result = messageSource.msg("amount.key", new Context(ITALIAN), 1234567);
-    String expected = new java.text.MessageFormat("{0,number,integer}", ENGLISH).format(new Object[]{1234567});
+    String expected = new java.text.MessageFormat("{0,number,integer}", ENGLISH).format(new Object[] {1234567});
     assertEquals(expected, result);
   }
 
@@ -210,8 +212,8 @@ class MessageSourceBaseTest {
     }
 
     static MockMessageSource withLegacyConstructor(Map<Locale, Map<String, String>> messages, Locale defaultLocale) {
-      return new MockMessageSource(MissingKeyStrategy.defaultStrategy(), ErrorHandler.defaultHandler(),
-          defaultLocale, messages);
+      return new MockMessageSource(MissingKeyStrategy.defaultStrategy(), ErrorHandler.defaultHandler(), defaultLocale,
+          messages);
     }
 
     @Override

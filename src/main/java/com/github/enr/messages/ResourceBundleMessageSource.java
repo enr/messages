@@ -16,9 +16,14 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
 
   private static final ResourceBundle MISSING_BUNDLE = new ResourceBundle() {
     @Override
-    protected Object handleGetObject(String key) { return null; }
+    protected Object handleGetObject(String key) {
+      return null;
+    }
+
     @Override
-    public java.util.Enumeration<String> getKeys() { return java.util.Collections.emptyEnumeration(); }
+    public java.util.Enumeration<String> getKeys() {
+      return java.util.Collections.emptyEnumeration();
+    }
   };
 
   private final String resource;

@@ -54,9 +54,8 @@ class ResourceBundleMessageSourceTest {
     assertEquals("fallback italiano", source.msg("test.message.only-fallback"));
 
     Map<String, String> allMessages = source.getAllMessagesKeyAndValue(new Context(customLocale));
-    assertThat(allMessages).as("get all messages result").hasSize(4)
-        .containsEntry("welcome.message", "Benvenuto {0}!").containsEntry("test.foo", "bar")
-        .containsEntry("test.message.both", "messages italiano")
+    assertThat(allMessages).as("get all messages result").hasSize(4).containsEntry("welcome.message", "Benvenuto {0}!")
+        .containsEntry("test.foo", "bar").containsEntry("test.message.both", "messages italiano")
         .containsEntry("test.message.only-fallback", "fallback italiano");
   }
 
@@ -64,18 +63,17 @@ class ResourceBundleMessageSourceTest {
   void testGetAllMessages() {
     ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME).build();
     Map<String, String> result = source.getAllMessagesKeyAndValue(new Context(Locale.ENGLISH));
-    assertThat(result).as("get all messages result").hasSize(4)
-        .containsEntry("welcome.message", "Welcome {0}!").containsEntry("test.foo", "bar")
-        .containsEntry("test.message.both", "messages").containsEntry("english.only.key", "Only in English");
+    assertThat(result).as("get all messages result").hasSize(4).containsEntry("welcome.message", "Welcome {0}!")
+        .containsEntry("test.foo", "bar").containsEntry("test.message.both", "messages")
+        .containsEntry("english.only.key", "Only in English");
   }
 
   @Test
   void testGetAllMessagesWithFallback() {
     Map<String, String> result = messageSource.getAllMessagesKeyAndValue(new Context(Locale.ENGLISH));
-    assertThat(result).as("get all messages result").hasSize(5)
-        .containsEntry("welcome.message", "Welcome {0}!").containsEntry("test.foo", "bar")
-        .containsEntry("test.message.both", "messages").containsEntry("test.message.only-fallback", "fallback")
-        .containsEntry("english.only.key", "Only in English");
+    assertThat(result).as("get all messages result").hasSize(5).containsEntry("welcome.message", "Welcome {0}!")
+        .containsEntry("test.foo", "bar").containsEntry("test.message.both", "messages")
+        .containsEntry("test.message.only-fallback", "fallback").containsEntry("english.only.key", "Only in English");
   }
 
   @Test
@@ -99,8 +97,8 @@ class ResourceBundleMessageSourceTest {
 
   @Test
   void testNullKey() {
-    IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-        () -> messageSource.msg(null, new Context(Locale.ENGLISH)));
+    IllegalArgumentException ex =
+        assertThrows(IllegalArgumentException.class, () -> messageSource.msg(null, new Context(Locale.ENGLISH)));
     assertEquals("Key and Context must not be null.", ex.getMessage());
   }
 
