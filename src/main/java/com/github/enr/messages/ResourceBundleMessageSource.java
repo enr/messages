@@ -129,6 +129,9 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
    */
   @Override
   public Map<String, String> getAllMessagesKeyAndValue(Context context) {
+    if (context == null) {
+      throw new IllegalArgumentException("Context must not be null.");
+    }
     Map<String, String> messages = new HashMap<>();
     try {
       ResourceBundle bundle = getMainBundle(context);
@@ -176,7 +179,7 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
     }
   }
 
-  protected ResourceBundle getMainBundle(Context context) {
+  private ResourceBundle getMainBundle(Context context) {
     ResourceBundle cached = mainBundleCache.computeIfAbsent(context.getLocale(), loc -> {
       try {
         return loadBundle(resource, loc);
@@ -188,7 +191,7 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
     return cached == MISSING_BUNDLE ? null : cached;
   }
 
-  protected ResourceBundle getFallbackBundle(Context context) {
+  private ResourceBundle getFallbackBundle(Context context) {
     if (fallbackResource == null) {
       return null;
     }
