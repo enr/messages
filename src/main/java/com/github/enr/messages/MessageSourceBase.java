@@ -37,23 +37,24 @@ public abstract class MessageSourceBase implements MessageSource {
     try {
       String template = getMessageTemplate(key, context);
       LOG.log(Logger.Level.DEBUG, "template = {0}", template);
-      if (template == null) {
-        // Fallback to default locale if flag is enabled
-        if (useDefaultLocaleFallback && !context.getLocale().equals(defaultContext.getLocale())) {
-          LOG.log(Logger.Level.DEBUG,
-              "Message key ''{0}'' not found in locale ''{1}'', falling back to default locale ''{2}''", key,
-              context.getLocale(), defaultContext.getLocale());
-          template = getMessageTemplate(key, defaultContext);
+      Context templateContext = context;
+      if (template == null && useDefaultLocaleFallback && !context.getLocale().equals(defaultContext.getLocale())) {
+        LOG.log(Logger.Level.DEBUG,
+            "Message key ''{0}'' not found in locale ''{1}'', falling back to default locale ''{2}''", key,
+            context.getLocale(), defaultContext.getLocale());
+        template = getMessageTemplate(key, defaultContext);
+        if (template != null) {
+          templateContext = defaultContext;
         }
       }
       if (template == null) {
         return missingKeyStrategy.handleMissingKey(key);
       }
       LOG.log(Logger.Level.DEBUG, "resolve msg from template {0}", template);
-      if (args == null) {
+      if (args == null || args.length == 0) {
         return template;
       }
-      MessageFormat mf = new MessageFormat(template, context.getLocale());
+      MessageFormat mf = new MessageFormat(template, templateContext.getLocale());
       return mf.format(args);
     } catch (Exception e) {
       return errorHandler.handleError(key, e);

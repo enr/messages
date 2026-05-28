@@ -2,11 +2,15 @@ package com.github.enr.messages;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,7 +23,6 @@ class MessageSourceBaseTest {
 
   private MockMessageSource messageSource;
 
-  // Test Data
   private Map<Locale, Map<String, String>> messages = new HashMap<>();
 
   @BeforeEach
@@ -40,78 +43,156 @@ class MessageSourceBaseTest {
   }
 
   @Test
-  @DisplayName("Flag Disabled - Message Exists in Requested Locale")
-  void flagDisabledMessageExistsInRequestedLocale() {
-    messageSource = builder().useDefaultLocaleFallback(false).build();
-    String message = messageSource.msg("test.key", new Context(ITALIAN));
-    assertEquals("Ciao mondo", message);
-  }
-
-  @Test
   @DisplayName("Flag Disabled - Message Does NOT Exist in Requested Locale")
   void flagDisabledMessageDoesNotExistInRequestedLocale() {
     messageSource = builder().useDefaultLocaleFallback(false).build();
-    // "fallback.key" only exists in English
-    String message = messageSource.msg("fallback.key", new Context(ITALIAN));
-    // The default strategy returns the key in braces
-    assertEquals("{fallback.key}", message);
+    assertEquals("{fallback.key}", messageSource.msg("fallback.key", new Context(ITALIAN)));
   }
 
   @Test
   @DisplayName("Flag Enabled - Message Exists in Requested Locale")
   void flagEnabledMessageExistsInRequestedLocale() {
     messageSource = builder().useDefaultLocaleFallback(true).build();
-    String message = messageSource.msg("test.key", new Context(ITALIAN));
-    assertEquals("Ciao mondo", message);
+    assertEquals("Ciao mondo", messageSource.msg("test.key", new Context(ITALIAN)));
   }
 
   @Test
-  @DisplayName("Flag Enabled - Message Only Exists in Default Locale Primary Bundle")
+  @DisplayName("Flag Enabled - Message Only Exists in Default Locale")
   void flagEnabledMessageOnlyExistsInDefaultLocale() {
     messageSource = builder().useDefaultLocaleFallback(true).build();
-    String message = messageSource.msg("fallback.key", new Context(ITALIAN));
-    assertEquals("This is a fallback", message);
+    assertEquals("This is a fallback", messageSource.msg("fallback.key", new Context(ITALIAN)));
   }
 
   @Test
   @DisplayName("Flag Enabled - Message Does Not Exist Anywhere")
   void flagEnabledMessageDoesNotExistAnywhere() {
     messageSource = builder().useDefaultLocaleFallback(true).build();
-    String message = messageSource.msg("nonexistent.key", new Context(ITALIAN));
-    assertEquals("{nonexistent.key}", message);
+    assertEquals("{nonexistent.key}", messageSource.msg("nonexistent.key", new Context(ITALIAN)));
   }
 
   @Test
   @DisplayName("Flag Enabled - Requested Locale IS Default Locale")
   void flagEnabledRequestedLocaleIsDefaultLocale() {
     messageSource = builder().useDefaultLocaleFallback(true).build();
-    String message = messageSource.msg("test.key", new Context(ENGLISH));
-    assertEquals("Hello world", message);
+    assertEquals("Hello world", messageSource.msg("test.key", new Context(ENGLISH)));
   }
 
   @Test
-  @DisplayName("Backward Compatibility - Constructor Without Flag")
-  void backwardCompatibilityConstructorWithoutFlag() {
-    // This test relies on the mock's constructor correctly defaulting the flag
-    messageSource = new MockMessageSource.Builder(messages).defaultLocale(ENGLISH).build();
-    String message = messageSource.msg("fallback.key", new Context(ITALIAN));
-    assertEquals("{fallback.key}", message); // Should not fallback
+  @DisplayName("3-arg Constructor Defaults useDefaultLocaleFallback to False")
+  void legacyConstructorDefaultsFlagToFalse() {
+    messageSource = MockMessageSource.withLegacyConstructor(messages, ENGLISH);
+    assertEquals("{fallback.key}", messageSource.msg("fallback.key", new Context(ITALIAN)));
     assertFalse(messageSource.isUseDefaultLocaleFallback());
   }
 
   @Test
-  @DisplayName("Flag Value Accessible via Getter")
-  void flagValueAccessibleViaGetter() {
-    MockMessageSource withFallback = builder().useDefaultLocaleFallback(true).build();
-    MockMessageSource withoutFallback = builder().useDefaultLocaleFallback(false).build();
-
-    assertTrue(withFallback.isUseDefaultLocaleFallback());
-    assertFalse(withoutFallback.isUseDefaultLocaleFallback());
+  @DisplayName("Null Context Throws IllegalArgumentException")
+  void contextNullThrowsIllegalArgumentException() {
+    messageSource = builder().build();
+    assertThrows(IllegalArgumentException.class, () -> messageSource.msg("test.key", (Context) null));
   }
 
-  /**
-   * A mock implementation of MessageSourceBase for testing purposes.
-   */
+  @Test
+  @DisplayName("Empty Key Returns Missing Key Placeholder")
+  void emptyKeyReturnsMissingKeyPlaceholder() {
+    messageSource = builder().build();
+    assertEquals("{}", messageSource.msg("", new Context(ENGLISH)));
+  }
+
+  @Test
+  @DisplayName("Args With Null Element Produces 'null' Literal in Output")
+  void argsWithNullElementProducesNullLiteralInOutput() {
+    Map<String, String> en = new HashMap<>();
+    en.put("greeting", "Hello {0}");
+    messages.put(ENGLISH, en);
+    messageSource = builder().build();
+
+    assertEquals("Hello null", messageSource.msg("greeting", new Context(ENGLISH), (Object) null));
+  }
+
+  @Test
+  @DisplayName("Explicit Null Args Array Returns Raw Template")
+  void explicitNullArgsArrayReturnsRawTemplate() {
+    Map<String, String> en = new HashMap<>();
+    en.put("json.example", "Use {\"key\": value} syntax");
+    messages.put(ENGLISH, en);
+    messageSource = builder().build();
+
+    assertEquals("Use {\"key\": value} syntax",
+        messageSource.msg("json.example", new Context(ENGLISH), (Object[]) null));
+  }
+
+  @Test
+  @DisplayName("Custom Missing Key Strategy Returning Null Propagates Null")
+  void customMissingKeyStrategyReturningNullPropagatesNull() {
+    messageSource = new MockMessageSource.Builder(messages).defaultLocale(ENGLISH)
+        .missingKeyStrategy(key -> null).build();
+    assertNull(messageSource.msg("nonexistent.key", new Context(ENGLISH)));
+  }
+
+  @Test
+  @DisplayName("Custom Error Handler Is Invoked With Correct Key on Template Error")
+  void customErrorHandlerIsInvokedWithCorrectKey() {
+    Map<String, String> en = new HashMap<>();
+    en.put("bad.template", "Broken {0");
+    messages.put(ENGLISH, en);
+
+    AtomicReference<String> capturedKey = new AtomicReference<>();
+    messageSource = new MockMessageSource.Builder(messages).defaultLocale(ENGLISH)
+        .errorHandler((key, ex) -> { capturedKey.set(key); return "ERROR"; }).build();
+
+    assertEquals("ERROR", messageSource.msg("bad.template", new Context(ENGLISH), "arg"));
+    assertEquals("bad.template", capturedKey.get());
+  }
+
+  @Test
+  @DisplayName("Malformed Template Invokes Default Error Handler")
+  void malformedTemplateInvokesDefaultErrorHandler() {
+    Map<String, String> en = new HashMap<>();
+    en.put("bad.template", "Broken {0");
+    messages.put(ENGLISH, en);
+    messageSource = builder().build();
+
+    String result = messageSource.msg("bad.template", new Context(ENGLISH), "arg");
+    assertTrue(result.startsWith("{bad.template}:"),
+        "Expected error handler output starting with {bad.template}: but was: " + result);
+  }
+
+  @Test
+  @DisplayName("Zero-arg Call Returns Template as-is, No MessageFormat Parsing")
+  void zeroArgCallReturnsTemplateWithoutMessageFormatParsing() {
+    Map<String, String> en = new HashMap<>();
+    en.put("json.example", "Use {\"key\": value} syntax");
+    messages.put(ENGLISH, en);
+    messageSource = new MockMessageSource.Builder(messages).defaultLocale(ENGLISH).build();
+
+    assertEquals("Use {\"key\": value} syntax", messageSource.msg("json.example", new Context(ENGLISH)));
+  }
+
+  @Test
+  @DisplayName("Flag Enabled - Fallback Template Formatted With Args")
+  void flagEnabledFallbackTemplateFormattedWithArgs() {
+    Map<String, String> en = new HashMap<>();
+    en.put("greeting.key", "Hello {0}");
+    messages.put(ENGLISH, en);
+    messageSource = builder().useDefaultLocaleFallback(true).build();
+
+    assertEquals("Hello World", messageSource.msg("greeting.key", new Context(ITALIAN), "World"));
+  }
+
+  @Test
+  @DisplayName("Flag Enabled - Fallback Uses Default Locale for MessageFormat")
+  void flagEnabledFallbackUsesDefaultLocaleForMessageFormat() {
+    Map<String, String> en = new HashMap<>();
+    en.put("amount.key", "{0,number,integer}");
+    messages.put(ENGLISH, en);
+    messageSource = builder().useDefaultLocaleFallback(true).build();
+
+    String result = messageSource.msg("amount.key", new Context(ITALIAN), 1234567);
+    String expected = new java.text.MessageFormat("{0,number,integer}", ENGLISH).format(new Object[]{1234567});
+    assertEquals(expected, result);
+  }
+
   private static class MockMessageSource extends MessageSourceBase {
 
     private final Map<Locale, Map<String, String>> messages;
@@ -122,6 +203,17 @@ class MessageSourceBaseTest {
       this.messages = messages;
     }
 
+    MockMessageSource(MissingKeyStrategy missingKeyStrategy, ErrorHandler errorHandler, Locale defaultLocale,
+        Map<Locale, Map<String, String>> messages) {
+      super(missingKeyStrategy, errorHandler, defaultLocale);
+      this.messages = messages;
+    }
+
+    static MockMessageSource withLegacyConstructor(Map<Locale, Map<String, String>> messages, Locale defaultLocale) {
+      return new MockMessageSource(MissingKeyStrategy.defaultStrategy(), ErrorHandler.defaultHandler(),
+          defaultLocale, messages);
+    }
+
     @Override
     protected String getMessageTemplate(String key, Context context) {
       Map<String, String> localeMessages = messages.get(context.getLocale());
@@ -129,6 +221,12 @@ class MessageSourceBaseTest {
         return localeMessages.get(key);
       }
       return null;
+    }
+
+    @Override
+    public Map<String, String> getAllMessagesKeyAndValue(Context context) {
+      Map<String, String> localeMessages = messages.get(context.getLocale());
+      return localeMessages != null ? Collections.unmodifiableMap(localeMessages) : Collections.emptyMap();
     }
 
     static class Builder {
@@ -152,16 +250,20 @@ class MessageSourceBaseTest {
         return this;
       }
 
+      public Builder missingKeyStrategy(MissingKeyStrategy strategy) {
+        this.missingKeyStrategy = strategy;
+        return this;
+      }
+
+      public Builder errorHandler(ErrorHandler handler) {
+        this.errorHandler = handler;
+        return this;
+      }
+
       public MockMessageSource build() {
         return new MockMessageSource(missingKeyStrategy, errorHandler, defaultLocale, useDefaultLocaleFallback,
             messages);
       }
-    }
-
-    @Override
-    public Map<String, String> getAllMessagesKeyAndValue(Context context) {
-      // TODO Auto-generated method stub
-      throw new UnsupportedOperationException("Unimplemented method 'getAllMessagesKeyAndValue'");
     }
   }
 }
