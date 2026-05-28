@@ -71,9 +71,10 @@ class ResourceBundleMessageSourceTest {
   @Test
   void testGetAllMessagesWithFallback() {
     Map<String, String> result = messageSource.getAllMessagesKeyAndValue(new Context(Locale.ENGLISH));
-    assertThat(result).as("get all messages result").hasSize(5).containsEntry("welcome.message", "Welcome {0}!")
+    assertThat(result).as("get all messages result").hasSize(6).containsEntry("welcome.message", "Welcome {0}!")
         .containsEntry("test.foo", "bar").containsEntry("test.message.both", "messages")
-        .containsEntry("test.message.only-fallback", "fallback").containsEntry("english.only.key", "Only in English");
+        .containsEntry("test.message.only-fallback", "fallback").containsEntry("english.only.key", "Only in English")
+        .containsEntry("deep.fallback.key", "Deep fallback value");
   }
 
   @Test
@@ -81,8 +82,9 @@ class ResourceBundleMessageSourceTest {
     ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource("messages.nonexistent")
         .withFallbackResource(FALLBACK_BUNDLE_NAME).build();
     Map<String, String> result = source.getAllMessagesKeyAndValue(new Context(Locale.ENGLISH));
-    assertThat(result).as("get all messages result when main bundle not found").hasSize(2)
-        .containsEntry("test.message.both", "fallback").containsEntry("test.message.only-fallback", "fallback");
+    assertThat(result).as("get all messages result when main bundle not found").hasSize(3)
+        .containsEntry("test.message.both", "fallback").containsEntry("test.message.only-fallback", "fallback")
+        .containsEntry("deep.fallback.key", "Deep fallback value");
   }
 
   @Test
@@ -156,6 +158,26 @@ class ResourceBundleMessageSourceTest {
         .withDefaultLocale(Locale.ENGLISH).withUseDefaultLocaleFallback(true).build();
     // "english.only.key" exists in test_en.properties but not in test_it.properties
     assertEquals("Only in English", source.msg("english.only.key", new Context(Locale.ITALIAN)));
+  }
+
+  @Test
+  void useDefaultLocaleFallback_keyMissingInBothItalianBundles_foundInEnglishPrimary() {
+    // TC4: key absent from Italian primary AND Italian fallback, present in English primary
+    ResourceBundleMessageSource source =
+        ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME).withFallbackResource(FALLBACK_BUNDLE_NAME)
+            .withDefaultLocale(Locale.ENGLISH).withUseDefaultLocaleFallback(true).build();
+    // "english.only.key" is in test_en.properties only, not in any Italian bundle or fallback
+    assertEquals("Only in English", source.msg("english.only.key", new Context(Locale.ITALIAN)));
+  }
+
+  @Test
+  void useDefaultLocaleFallback_keyMissingEverywhere_foundInEnglishFallbackBundle() {
+    // TC5: key absent from all Italian bundles AND English primary, present only in English fallback
+    ResourceBundleMessageSource source =
+        ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME).withFallbackResource(FALLBACK_BUNDLE_NAME)
+            .withDefaultLocale(Locale.ENGLISH).withUseDefaultLocaleFallback(true).build();
+    // "deep.fallback.key" is only in fallback_en.properties
+    assertEquals("Deep fallback value", source.msg("deep.fallback.key", new Context(Locale.ITALIAN)));
   }
 
   @Test
