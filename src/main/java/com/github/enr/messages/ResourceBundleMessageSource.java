@@ -14,6 +14,13 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
 
   private static final Logger LOG = System.getLogger(MethodHandles.lookup().lookupClass().getName());
 
+  private static final ResourceBundle MISSING_BUNDLE = new ResourceBundle() {
+    @Override
+    protected Object handleGetObject(String key) { return null; }
+    @Override
+    public java.util.Enumeration<String> getKeys() { return java.util.Collections.emptyEnumeration(); }
+  };
+
   private final String resource;
 
   private String fallbackResource;
@@ -24,7 +31,7 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
   private final ConcurrentHashMap<Locale, ResourceBundle> fallbackBundleCache;
 
   private ResourceBundleMessageSource(Builder builder) {
-    super(builder.missingKeyStrategy, builder.errorHandler, builder.defaultLocale);
+    super(builder.missingKeyStrategy, builder.errorHandler, builder.defaultLocale, builder.useDefaultLocaleFallback);
     this.resource = builder.resource;
     this.fallbackResource = builder.fallbackResource;
     this.classLoader = builder.classLoader;
@@ -40,8 +47,12 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
     private Locale defaultLocale = Locale.getDefault();
     private String fallbackResource;
     private ClassLoader classLoader;
+    private boolean useDefaultLocaleFallback = false;
 
     public Builder(String resource) {
+      if (resource == null) {
+        throw new IllegalArgumentException("resource must not be null");
+      }
       this.resource = resource;
     }
 
@@ -71,6 +82,11 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
 
     public Builder withClassLoader(ClassLoader classLoader) {
       this.classLoader = classLoader;
+      return this;
+    }
+
+    public Builder withUseDefaultLocaleFallback(boolean useDefaultLocaleFallback) {
+      this.useDefaultLocaleFallback = useDefaultLocaleFallback;
       return this;
     }
   }
@@ -144,46 +160,47 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
   }
 
   private void loadBundlesForLocale(Locale locale) {
-    // Carica main bundle
     try {
-      ResourceBundle mainBundle = loadBundle(resource, locale);
-      mainBundleCache.put(locale, mainBundle);
+      mainBundleCache.put(locale, loadBundle(resource, locale));
     } catch (MissingResourceException e) {
-      LOG.log(Logger.Level.WARNING, "Main bundle not found for locale " + locale);
+      mainBundleCache.put(locale, MISSING_BUNDLE);
+      LOG.log(Logger.Level.WARNING, "Main bundle not found for locale {0}", locale);
     }
-
-    // Carica fallback bundle
     if (fallbackResource != null) {
       try {
-        ResourceBundle fallbackBundle = loadBundle(fallbackResource, locale);
-        fallbackBundleCache.put(locale, fallbackBundle);
+        fallbackBundleCache.put(locale, loadBundle(fallbackResource, locale));
       } catch (MissingResourceException e) {
-        LOG.log(Logger.Level.WARNING, "Fallback bundle not found for locale " + locale);
+        fallbackBundleCache.put(locale, MISSING_BUNDLE);
+        LOG.log(Logger.Level.WARNING, "Fallback bundle not found for locale {0}", locale);
       }
     }
   }
 
   protected ResourceBundle getMainBundle(Context context) {
-    return mainBundleCache.computeIfAbsent(context.getLocale(), loc -> {
+    ResourceBundle cached = mainBundleCache.computeIfAbsent(context.getLocale(), loc -> {
       try {
         return loadBundle(resource, loc);
       } catch (MissingResourceException e) {
-        return null;
+        LOG.log(Logger.Level.WARNING, "Main bundle not found for locale {0}", loc);
+        return MISSING_BUNDLE;
       }
     });
+    return cached == MISSING_BUNDLE ? null : cached;
   }
 
   protected ResourceBundle getFallbackBundle(Context context) {
     if (fallbackResource == null) {
       return null;
     }
-    return fallbackBundleCache.computeIfAbsent(context.getLocale(), loc -> {
+    ResourceBundle cached = fallbackBundleCache.computeIfAbsent(context.getLocale(), loc -> {
       try {
         return loadBundle(fallbackResource, loc);
       } catch (MissingResourceException e) {
-        return null;
+        LOG.log(Logger.Level.WARNING, "Fallback bundle not found for locale {0}", loc);
+        return MISSING_BUNDLE;
       }
     });
+    return cached == MISSING_BUNDLE ? null : cached;
   }
 
   private ResourceBundle loadBundle(String res, Locale locale) {

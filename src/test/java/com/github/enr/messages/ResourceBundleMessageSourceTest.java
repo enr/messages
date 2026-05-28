@@ -97,17 +97,19 @@ class ResourceBundleMessageSourceTest {
     ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME).build();
     Context context = new Context(Locale.ENGLISH);
     Map<String, String> result = source.getAllMessagesKeyAndValue(context);
-    assertThat(result).as("get all messages result").hasSize(3).containsEntry("welcome.message", "Welcome {0}!")
-        .containsEntry("test.foo", "bar").containsEntry("test.message.both", "messages");
+    assertThat(result).as("get all messages result").hasSize(4).containsEntry("welcome.message", "Welcome {0}!")
+        .containsEntry("test.foo", "bar").containsEntry("test.message.both", "messages")
+        .containsEntry("english.only.key", "Only in English");
   }
 
   @Test
   void testGetAllMessagesWithFallback() {
     Context context = new Context(Locale.ENGLISH);
     Map<String, String> result = messageSource.getAllMessagesKeyAndValue(context);
-    assertThat(result).as("get all messages result").hasSize(4).containsEntry("welcome.message", "Welcome {0}!")
+    assertThat(result).as("get all messages result").hasSize(5).containsEntry("welcome.message", "Welcome {0}!")
         .containsEntry("test.foo", "bar").containsEntry("test.message.both", "messages")
-        .containsEntry("test.message.only-fallback", "fallback");
+        .containsEntry("test.message.only-fallback", "fallback")
+        .containsEntry("english.only.key", "Only in English");
   }
 
   @Test
@@ -126,9 +128,9 @@ class ResourceBundleMessageSourceTest {
         .withFallbackResource("messages.nonexistent").build();
     Context context = new Context(Locale.ENGLISH);
     Map<String, String> result = source.getAllMessagesKeyAndValue(context);
-    assertThat(result).as("get all messages result when fallback bundle not found").hasSize(3)
+    assertThat(result).as("get all messages result when fallback bundle not found").hasSize(4)
         .containsEntry("welcome.message", "Welcome {0}!").containsEntry("test.foo", "bar")
-        .containsEntry("test.message.both", "messages");
+        .containsEntry("test.message.both", "messages").containsEntry("english.only.key", "Only in English");
   }
 
   @Test
@@ -285,6 +287,51 @@ class ResourceBundleMessageSourceTest {
     // Test passes if no exceptions (like ConcurrentModificationException) are thrown.
     // And cache should contain exactly one entry for Italian locale
     assertEquals(1, getCache(source, "mainBundleCache").size());
+  }
+
+  @Test
+  void testNullResourceThrowsIllegalArgument() {
+    assertThrows(IllegalArgumentException.class, () -> new ResourceBundleMessageSource.Builder(null),
+        "Null resource name should throw immediately");
+  }
+
+  @Test
+  void testUseDefaultLocaleFallback_flagWiredInBuilder() {
+    ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME)
+        .withDefaultLocale(Locale.ENGLISH).withUseDefaultLocaleFallback(true).build();
+    assertTrue(source.isUseDefaultLocaleFallback());
+
+    ResourceBundleMessageSource sourceOff = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME)
+        .withDefaultLocale(Locale.ENGLISH).withUseDefaultLocaleFallback(false).build();
+    assertFalse(sourceOff.isUseDefaultLocaleFallback());
+  }
+
+  @Test
+  void testUseDefaultLocaleFallback_keyMissingInRequestedLocale() {
+    ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME)
+        .withDefaultLocale(Locale.ENGLISH).withUseDefaultLocaleFallback(true).build();
+    // "english.only.key" exists in test_en.properties but not in test_it.properties
+    String result = source.msg("english.only.key", new Context(Locale.ITALIAN));
+    assertEquals("Only in English", result);
+  }
+
+  @Test
+  void testUseDefaultLocaleFallback_disabled_keyMissingInRequestedLocale() {
+    ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME)
+        .withDefaultLocale(Locale.ENGLISH).withUseDefaultLocaleFallback(false).build();
+    String result = source.msg("english.only.key", new Context(Locale.ITALIAN));
+    assertEquals("{english.only.key}", result);
+  }
+
+  @Test
+  void testNegativeCaching_missingBundleEntryCached() {
+    ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource("messages.nonexistent")
+        .withDefaultLocale(Locale.ENGLISH).build();
+    // First call — should cache the miss
+    source.msg("any.key", new Context(Locale.ENGLISH));
+    // The miss entry must be present so subsequent calls don't retry
+    assertTrue(getCache(source, "mainBundleCache").containsKey(Locale.ENGLISH),
+        "Missing bundle sentinel should be cached to avoid repeated lookups");
   }
 
   @Test

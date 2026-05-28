@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -109,6 +110,43 @@ class MessageSourceBaseTest {
     assertFalse(withoutFallback.isUseDefaultLocaleFallback());
   }
 
+  @Test
+  @DisplayName("Zero-arg call returns template as-is, no MessageFormat parsing")
+  void zeroArgCallReturnsTemplateWithoutMessageFormatParsing() {
+    Map<String, String> en = new HashMap<>();
+    en.put("json.example", "Use {\"key\": value} syntax");
+    messages.put(ENGLISH, en);
+    messageSource = new MockMessageSource.Builder(messages).defaultLocale(ENGLISH).build();
+
+    String result = messageSource.msg("json.example", new Context(ENGLISH));
+    assertEquals("Use {\"key\": value} syntax", result);
+  }
+
+  @Test
+  @DisplayName("Flag Enabled - Fallback template formatted with args")
+  void flagEnabledFallbackTemplateFormattedWithArgs() {
+    Map<String, String> en = new HashMap<>();
+    en.put("greeting.key", "Hello {0}");
+    messages.put(ENGLISH, en);
+    messageSource = builder().useDefaultLocaleFallback(true).build();
+
+    String result = messageSource.msg("greeting.key", new Context(ITALIAN), "World");
+    assertEquals("Hello World", result);
+  }
+
+  @Test
+  @DisplayName("Flag Enabled - Fallback uses default locale for MessageFormat")
+  void flagEnabledFallbackUsesDefaultLocaleForMessageFormat() {
+    Map<String, String> en = new HashMap<>();
+    en.put("amount.key", "{0,number,integer}");
+    messages.put(ENGLISH, en);
+    messageSource = builder().useDefaultLocaleFallback(true).build();
+
+    String result = messageSource.msg("amount.key", new Context(ITALIAN), 1234567);
+    String expectedWithEnglishLocale = new java.text.MessageFormat("{0,number,integer}", ENGLISH).format(new Object[]{1234567});
+    assertEquals(expectedWithEnglishLocale, result);
+  }
+
   /**
    * A mock implementation of MessageSourceBase for testing purposes.
    */
@@ -160,8 +198,8 @@ class MessageSourceBaseTest {
 
     @Override
     public Map<String, String> getAllMessagesKeyAndValue(Context context) {
-      // TODO Auto-generated method stub
-      throw new UnsupportedOperationException("Unimplemented method 'getAllMessagesKeyAndValue'");
+      Map<String, String> localeMessages = messages.get(context.getLocale());
+      return localeMessages != null ? Collections.unmodifiableMap(localeMessages) : Collections.emptyMap();
     }
   }
 }
