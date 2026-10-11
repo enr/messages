@@ -50,6 +50,13 @@ Context context = new Context(Locale.ENGLISH);
 String message = source.msg("welcome.message", context, "John");
 ```
 
+Messages with arguments are formatted with `java.text.MessageFormat`, where an apostrophe must be written as `''`
+(e.g. `user.named=L''utente {0}`). By default, messages without arguments are returned as-is: use
+`.withAlwaysUseMessageFormat(true)` to apply the same rules in both cases.
+
+Locales without a bundle are not resolved against the JVM default locale: enable
+`.withUseDefaultLocaleFallback(true)` to fall back to the locale set with `.withDefaultLocale(...)`.
+
 ## Development
 
 Build:
