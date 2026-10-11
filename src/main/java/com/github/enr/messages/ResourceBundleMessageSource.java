@@ -14,6 +14,13 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
 
   private static final Logger LOG = System.getLogger(MethodHandles.lookup().lookupClass().getName());
 
+  /**
+   * Avoids the JDK fallback to {@code Locale.getDefault()}: a locale without a bundle must be
+   * reported as missing so that the configured default locale (not the JVM one) is used.
+   */
+  private static final ResourceBundle.Control NO_FALLBACK_CONTROL =
+      ResourceBundle.Control.getNoFallbackControl(ResourceBundle.Control.FORMAT_DEFAULT);
+
   private static final ResourceBundle MISSING_BUNDLE = new ResourceBundle() {
     @Override
     protected Object handleGetObject(String key) {
@@ -36,7 +43,8 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
   private final ConcurrentHashMap<Locale, ResourceBundle> fallbackBundleCache;
 
   private ResourceBundleMessageSource(Builder builder) {
-    super(builder.missingKeyStrategy, builder.errorHandler, builder.defaultLocale, builder.useDefaultLocaleFallback);
+    super(builder.missingKeyStrategy, builder.errorHandler, builder.defaultLocale, builder.useDefaultLocaleFallback,
+        builder.alwaysUseMessageFormat);
     this.resource = builder.resource;
     this.fallbackResource = builder.fallbackResource;
     this.classLoader = builder.classLoader;
@@ -53,6 +61,7 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
     private String fallbackResource;
     private ClassLoader classLoader;
     private boolean useDefaultLocaleFallback = false;
+    private boolean alwaysUseMessageFormat = false;
 
     public Builder(String resource) {
       if (resource == null) {
@@ -92,6 +101,15 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
 
     public Builder withUseDefaultLocaleFallback(boolean useDefaultLocaleFallback) {
       this.useDefaultLocaleFallback = useDefaultLocaleFallback;
+      return this;
+    }
+
+    /**
+     * If true, templates are always parsed with {@link java.text.MessageFormat}, even without
+     * arguments, so quoting rules (e.g. {@code ''} for an apostrophe) are applied consistently.
+     */
+    public Builder withAlwaysUseMessageFormat(boolean alwaysUseMessageFormat) {
+      this.alwaysUseMessageFormat = alwaysUseMessageFormat;
       return this;
     }
   }
@@ -213,9 +231,9 @@ public class ResourceBundleMessageSource extends MessageSourceBase {
 
   private ResourceBundle loadBundle(String res, Locale locale) {
     if (classLoader != null) {
-      return ResourceBundle.getBundle(res, locale, classLoader);
+      return ResourceBundle.getBundle(res, locale, classLoader, NO_FALLBACK_CONTROL);
     }
-    return ResourceBundle.getBundle(res, locale);
+    return ResourceBundle.getBundle(res, locale, NO_FALLBACK_CONTROL);
   }
 
   protected void clearCache() {

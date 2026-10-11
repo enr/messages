@@ -13,13 +13,20 @@ public abstract class MessageSourceBase implements MessageSource {
   private final ErrorHandler errorHandler;
   private final Context defaultContext;
   private final boolean useDefaultLocaleFallback;
+  private final boolean alwaysUseMessageFormat;
 
   protected MessageSourceBase(MissingKeyStrategy missingKeyStrategy, ErrorHandler errorHandler, Locale defaultLocale,
-      boolean useDefaultLocaleFallback) {
+      boolean useDefaultLocaleFallback, boolean alwaysUseMessageFormat) {
     this.missingKeyStrategy = missingKeyStrategy != null ? missingKeyStrategy : MissingKeyStrategy.defaultStrategy();
     this.errorHandler = errorHandler != null ? errorHandler : ErrorHandler.defaultHandler();
     this.defaultContext = new Context(defaultLocale);
     this.useDefaultLocaleFallback = useDefaultLocaleFallback;
+    this.alwaysUseMessageFormat = alwaysUseMessageFormat;
+  }
+
+  protected MessageSourceBase(MissingKeyStrategy missingKeyStrategy, ErrorHandler errorHandler, Locale defaultLocale,
+      boolean useDefaultLocaleFallback) {
+    this(missingKeyStrategy, errorHandler, defaultLocale, useDefaultLocaleFallback, false);
   }
 
   protected MessageSourceBase(MissingKeyStrategy missingKeyStrategy, ErrorHandler errorHandler, Locale defaultLocale) {
@@ -51,11 +58,12 @@ public abstract class MessageSourceBase implements MessageSource {
         return missingKeyStrategy.handleMissingKey(key);
       }
       LOG.log(Logger.Level.DEBUG, "resolve msg from template {0}", template);
-      if (args == null || args.length == 0) {
+      boolean noArgs = args == null || args.length == 0;
+      if (noArgs && !alwaysUseMessageFormat) {
         return template;
       }
       MessageFormat mf = new MessageFormat(template, templateContext.getLocale());
-      return mf.format(args);
+      return mf.format(noArgs ? new Object[0] : args);
     } catch (Exception e) {
       return errorHandler.handleError(key, e);
     }
@@ -68,5 +76,9 @@ public abstract class MessageSourceBase implements MessageSource {
 
   public boolean isUseDefaultLocaleFallback() {
     return useDefaultLocaleFallback;
+  }
+
+  public boolean isAlwaysUseMessageFormat() {
+    return alwaysUseMessageFormat;
   }
 }

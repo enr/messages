@@ -195,13 +195,51 @@ class MessageSourceBaseTest {
     assertEquals(expected, result);
   }
 
+  @Test
+  @DisplayName("Always Use MessageFormat - Escaped Apostrophe Is Consistent With and Without Args")
+  void alwaysUseMessageFormatHandlesApostrophesConsistently() {
+    Map<String, String> it = new HashMap<>();
+    it.put("user", "L''utente");
+    it.put("user.named", "L''utente {0}");
+    messages.put(ITALIAN, it);
+    messageSource = builder().alwaysUseMessageFormat(true).build();
+
+    assertEquals("L'utente", messageSource.msg("user", new Context(ITALIAN)));
+    assertEquals("L'utente", messageSource.msg("user", new Context(ITALIAN), (Object[]) null));
+    assertEquals("L'utente Mario", messageSource.msg("user.named", new Context(ITALIAN), "Mario"));
+    assertTrue(messageSource.isAlwaysUseMessageFormat());
+  }
+
+  @Test
+  @DisplayName("Default - Zero-arg Call Does Not Unescape Apostrophes")
+  void defaultZeroArgCallKeepsEscapedApostrophes() {
+    Map<String, String> it = new HashMap<>();
+    it.put("user", "L''utente");
+    messages.put(ITALIAN, it);
+    messageSource = builder().build();
+
+    assertEquals("L''utente", messageSource.msg("user", new Context(ITALIAN)));
+    assertFalse(messageSource.isAlwaysUseMessageFormat());
+  }
+
+  @Test
+  @DisplayName("Always Use MessageFormat - Malformed Template Without Args Invokes Error Handler")
+  void alwaysUseMessageFormatMalformedTemplateWithoutArgsInvokesErrorHandler() {
+    Map<String, String> en = new HashMap<>();
+    en.put("bad.template", "Broken {0");
+    messages.put(ENGLISH, en);
+    messageSource = builder().alwaysUseMessageFormat(true).errorHandler((key, ex) -> "ERROR").build();
+
+    assertEquals("ERROR", messageSource.msg("bad.template", new Context(ENGLISH)));
+  }
+
   private static class MockMessageSource extends MessageSourceBase {
 
     private final Map<Locale, Map<String, String>> messages;
 
     MockMessageSource(MissingKeyStrategy missingKeyStrategy, ErrorHandler errorHandler, Locale defaultLocale,
-        boolean useDefaultLocaleFallback, Map<Locale, Map<String, String>> messages) {
-      super(missingKeyStrategy, errorHandler, defaultLocale, useDefaultLocaleFallback);
+        boolean useDefaultLocaleFallback, boolean alwaysUseMessageFormat, Map<Locale, Map<String, String>> messages) {
+      super(missingKeyStrategy, errorHandler, defaultLocale, useDefaultLocaleFallback, alwaysUseMessageFormat);
       this.messages = messages;
     }
 
@@ -235,6 +273,7 @@ class MessageSourceBaseTest {
       private final Map<Locale, Map<String, String>> messages;
       private Locale defaultLocale = Locale.ROOT;
       private boolean useDefaultLocaleFallback = false;
+      private boolean alwaysUseMessageFormat = false;
       private MissingKeyStrategy missingKeyStrategy = MissingKeyStrategy.defaultStrategy();
       private ErrorHandler errorHandler = ErrorHandler.defaultHandler();
 
@@ -252,6 +291,11 @@ class MessageSourceBaseTest {
         return this;
       }
 
+      public Builder alwaysUseMessageFormat(boolean alwaysUseMessageFormat) {
+        this.alwaysUseMessageFormat = alwaysUseMessageFormat;
+        return this;
+      }
+
       public Builder missingKeyStrategy(MissingKeyStrategy strategy) {
         this.missingKeyStrategy = strategy;
         return this;
@@ -264,7 +308,7 @@ class MessageSourceBaseTest {
 
       public MockMessageSource build() {
         return new MockMessageSource(missingKeyStrategy, errorHandler, defaultLocale, useDefaultLocaleFallback,
-            messages);
+            alwaysUseMessageFormat, messages);
       }
     }
   }

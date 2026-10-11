@@ -14,6 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -24,10 +25,56 @@ class ResourceBundleMessageSourceTest {
 
   private ResourceBundleMessageSource messageSource;
 
+  private Locale originalJvmLocale;
+
   @BeforeEach
   void setUp() {
+    originalJvmLocale = Locale.getDefault();
     messageSource = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME)
         .withFallbackResource(FALLBACK_BUNDLE_NAME).withDefaultLocale(Locale.ENGLISH).build();
+  }
+
+  @AfterEach
+  void restoreJvmLocale() {
+    Locale.setDefault(originalJvmLocale);
+  }
+
+  @Test
+  void unsupportedLocaleFallsBackToConfiguredDefaultLocaleNotJvmLocale() {
+    Locale.setDefault(Locale.ENGLISH);
+    ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME)
+        .withDefaultLocale(Locale.ITALIAN).withUseDefaultLocaleFallback(true).build();
+    assertEquals("Benvenuto Mario!", source.msg("welcome.message", new Context(Locale.FRENCH), "Mario"));
+  }
+
+  @Test
+  void unsupportedLocaleWithoutDefaultLocaleFallbackIsMissingKey() {
+    Locale.setDefault(Locale.ENGLISH);
+    ResourceBundleMessageSource source =
+        ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME).withDefaultLocale(Locale.ITALIAN).build();
+    assertEquals("{welcome.message}", source.msg("welcome.message", new Context(Locale.FRENCH), "Mario"));
+  }
+
+  @Test
+  void unsupportedLocaleDoesNotLoadJvmLocaleBundles() {
+    Locale.setDefault(Locale.ENGLISH);
+    ResourceBundleMessageSource source = ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME)
+        .withFallbackResource(FALLBACK_BUNDLE_NAME).withDefaultLocale(Locale.ITALIAN).build();
+    assertThat(source.getAllMessagesKeyAndValue(new Context(Locale.FRENCH))).isEmpty();
+  }
+
+  @Test
+  void regionalLocaleStillResolvesLanguageBundle() {
+    ResourceBundleMessageSource source =
+        ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME).withDefaultLocale(Locale.ENGLISH).build();
+    assertEquals("Benvenuto Mario!", source.msg("welcome.message", new Context(Locale.ITALY), "Mario"));
+  }
+
+  @Test
+  void alwaysUseMessageFormatFlagWiredInBuilder() {
+    assertFalse(ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME).build().isAlwaysUseMessageFormat());
+    assertTrue(ResourceBundleMessageSource.forResource(RESOURCE_BUNDLE_NAME).withAlwaysUseMessageFormat(true).build()
+        .isAlwaysUseMessageFormat());
   }
 
   @Test
